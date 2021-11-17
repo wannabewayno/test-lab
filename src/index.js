@@ -1,5 +1,6 @@
 const program = require('commander');
 const path = require('path');
+const os = require("os");
 const PromptService = require('./Services/PromptService');
 const { createWriteStream } = require('fs');
 const { writeFile, readFile } = require('fs/promises');
@@ -9,6 +10,10 @@ program
     .argument('<project>', 'project to run tests on')
     .option('-a, --all', 'Run every test')
     .action(async project => {
+        const projects = await readFile(projectsPath,'utf-8').then(data => JSON.parse(data));
+        // path to project from root.
+        // if !project[project] throw an error, project not registered! run test-lab add <projectName> to set up your project
+        // then we need to run test-lab...
         const logStream = createWriteStream('./logFile.json', { flags: 'a' });
         console.log(`Running tests on: ${project}`);
         // look up known project to find dir..
@@ -38,53 +43,30 @@ program
         }
     })
 
-program
-    .command('add')
+const AddProject = new program.Command('add')
     .description('add a project to run tests on')
     .argument('<projectName>', 'This will be the command you call to run tests')
-    .option('--path [file path]', 'file path to project directory')
+    .option('--path [filePath]', 'file path to project directory')
     .action( async projectName => {
-        console.log(`Adding "${projectName}" to known projects`);
-        let { path: filePath } = program.opts();
-        // open a file prompt to 
-        // if (!filePath) {
-        //     // prompt the user to pick a file path to set as the root directory.
-        //     await new PromptService()
-        //         .file('Choose path to project\'s root directory', { root: })
-        //         .ask()
-        //         .then(({ file }) => filePath = file);
-        // }
-        console.log(path.parse(__dirname));
-        const { root } = path.parse(__dirname);
-        const result = path.join(root,'/Users/wayne');
-        console.log(result);
-        if (!filePath) {
-        //     // prompt the user to pick a file path to set as the root directory.
+        let { path: filePath } = AddProject.opts();
+        const userHomeDir = os.homedir();
+
+         if (filePath) filePath = path.join(userHomeDir,filePath);
+         else {
+            // prompt the user to pick a file path to set as the root directory.
             await new PromptService()
-                .fileSearch('Choose path to project\'s root directory', {
-                    excludePath: path => (/node_modules/).test(path),
-                    excludeFilter: path => (/\\\./).test(path),
-                    rootPath: result,
-                    itemType: 'directory',
-                    depthLimit: 3,
-                })
+                .file('Choose path to project\'s root directory', { root: userHomeDir, onlyShowDir: true })
                 .ask()
-                .then(({ fileSearch }) => filePath = fileSearch);
+                .then(({ file }) => filePath = file);
         }
-        //  if (!filePath) {
-        //     // prompt the user to pick a file path to set as the root directory.
-        //     await new PromptService()
-        //         .file('Choose path to project\'s root directory', { root: result })
-        //         .ask()
-        //         .then(({ file }) => filePath = file);
-        // }
-        console.log({ filePath });
         const projectsPath = path.join(__dirname, '../data/projects.json') 
 
         const projects = await readFile(projectsPath,'utf-8').then(data => JSON.parse(data));
         projects[projectName] = filePath;
-        console.log(projects);
         await writeFile(projectsPath, JSON.stringify(projects, null, 2))
+
+        console.log(`Added "${projectName}" to known projects`);
     });
 
+program.addCommand(AddProject);
 program.parse();
