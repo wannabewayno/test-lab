@@ -1,9 +1,10 @@
 const inquirer = require('inquirer'); // https://www.npmjs.com/package/inquirer
 
-module.exports = class PromptService {
+module.exports = class Prompt {
     constructor (prompts = []) {
         this.inquirer = inquirer
         this.inquirer.registerPrompt('file-tree-selection', require('inquirer-file-tree-selection-prompt')); // https://github.com/anc95/inquirer-file-tree-selection
+        this.inquirer.registerPrompt('fuzzypath', require('inquirer-fuzzy-path')) // https://github.com/adelsz/inquirer-fuzzy-path
 
         this.prompts = prompts;
     }
@@ -17,6 +18,8 @@ module.exports = class PromptService {
     confirm(...inputs) { return this.addPrompts(Prompt.confirm(...inputs)); }
 
     file(...inputs) { return this.addPrompts(Prompt.file(...inputs)); }
+
+    fileSearch(...inputs)  { return this.addPrompts(Prompt.fileSearch(...inputs)); }
 
     date(...inputs) { return this.addPrompts(Prompt.date(...inputs)); }
 
@@ -108,6 +111,28 @@ module.exports = class PromptService {
         return {
             type: 'password',
             name: 'password',
+            ...Prompt.parseMessage(message),
+            ...options
+        }
+    }
+
+    /**
+     * 
+     * @param {*} message 
+     * @param {*} options - available options for this
+     * @param {String} [options.itemType='any'] - enum: 'any', 'directory', 'file'
+     * @param {String} [options.rootPath='app'] - root directory to start with
+     * @param {Function} [options.excludePath] - exclude these
+     * @param {Function} [options.excludeFilter] - filter by..
+     * @param {String} [options.default] - idk
+     * @param {Boolean} [options.suggestOnly] - Restrict prompt answer to available choices or use them as suggestions
+     * @param {Number} [options.depthLimit] - Limit the depth of sub-folders to scan, Defaults to infinite depth if undefined 
+     * @returns 
+     */
+    static fileSearch = (message, options = {}) => {
+        return {
+            type: 'fuzzypath',
+            name: 'fileSearch',
             ...Prompt.parseMessage(message),
             ...options
         }
