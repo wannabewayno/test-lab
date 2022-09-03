@@ -143,6 +143,17 @@ module.exports = class Prompt {
     static loopInput = (message, callback, { exit = 'exit', onExit, ...options } = {}) => { 
         return this.PromptLoop(() => new this().input({ choice: message }, options), callback, { exit, onLoop, onExit })
     }
+
+    /**
+     * 
+     * @param {String} message 
+     * @param {Object[]|String[]} choices 
+     * @param {Function} callback 
+     * @param {Object} options
+     * @param {String|Function} [options.exit='exit'] - Default exit signal.
+     * @param {Object} [options.onExit] - a callback to run when the loop exits, the return value of onExit will be the return value of this function.
+     * @returns 
+     */
     static loopChoose = (message, choices, callback, { exit = 'exit', onExit, ...options } = {}) => {
         return this.PromptLoop(choices => new this().choice({ choice: message }, choices, options), callback, { exit, onLoop:  () => choices().concat(exit), onExit })
     }
@@ -158,11 +169,13 @@ module.exports = class Prompt {
      * @param {Function} [options.onLoop] - Optional set up function, called at the beginning of loop and it's return value passed to initiate the prompt 
      */
     static PromptLoop = async (prompt, callback, { exit = 'exit', onLoop = () => {}, onExit = () => {} }) => {
+        const shouldExit = exit instanceof Function ? exit : choice => choice === exit;
         let done = false;
         while (!done) {
             const { choice, ...answers } = await prompt(onLoop()).ask();
-            if (choice === exit) done = true, onExit();
+            if (shouldExit(choice, answers)) done = true;
             else await callback(choice, answers); // must return a promise.
         }
+        return onExit();
     }
 }
